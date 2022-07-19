@@ -1,10 +1,12 @@
 import argparse
+import bs4
+import json
 import requests
 import sys
 import traceback
 
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 from urllib.parse import urlparse
 
 def get_page(page_url: str, use_cache: bool = True) -> Optional[bytes]:
@@ -21,7 +23,7 @@ def get_page(page_url: str, use_cache: bool = True) -> Optional[bytes]:
         with cache_path.open('rb') as f_hndl:
             return f_hndl.read()
 
-    print(f'[INFO] Performing HTTP GET on: {page_url}')
+    print(f'[INFO] HTTP GET on: {page_url}')
     try:
         page = requests.get(page_url, timeout=3)
     except Exception:
@@ -35,12 +37,32 @@ def get_page(page_url: str, use_cache: bool = True) -> Optional[bytes]:
 
     return page.content
 
+def interesting_links(soup: bs4.BeautifulSoup) -> Iterator[str]:
+    '''Generator which provides links that reside within <li> tags
+    '''
+    for li_tags in soup.find_all('li'):
+        a_tags = li_tags.find_all('a', href=True)
+        for a_tag in a_tags:
+            if a_tag['href'].startswith('#'):
+                continue
+            yield a_tag['href']
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', action='store_true', help='Determines if cached pages will be loaded in place of HTTP GET requests')
-    parser.add_argument('url')
 
     args = parser.parse_args()
 
-    with open('dummy', 'wb') as f_hndl:
-        f_hndl.write(get_page(args.url, args.c))
+    output_dict = {}
+    output_index = Path('index.json')
+
+    prog_lang_url = 'https://en.wikipedia.org/wiki/List_of_programming_languages'
+    wiki_netloc = urlparse(prog_lang_url).netloc
+    
+    base_soup = bs4.BeautifulSoup(get_page(prog_lang_url, args.c), 'html.parser')
+
+    for link in interesting_links(base_soup):
+        output_dict[link] = {}
+
+    with output_index.open('w') as f_hndl:
+        json.dump(output_dict, f_hndl, indent=4)
