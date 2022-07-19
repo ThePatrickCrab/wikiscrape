@@ -37,15 +37,16 @@ def get_page(page_url: str, use_cache: bool = True) -> Optional[bytes]:
 
     return page.content
 
-def interesting_links(soup: bs4.BeautifulSoup) -> Iterator[str]:
-    '''Generator which provides links that reside within <li> tags
+def interesting_links(soup: bs4.BeautifulSoup, base_url: str) -> Iterator[str]:
+    '''Generator which yields internal links that reside within <li> tags
     '''
     for li_tags in soup.find_all('li'):
         a_tags = li_tags.find_all('a', href=True)
         for a_tag in a_tags:
-            if a_tag['href'].startswith('#'):
+            if a_tag['href'].startswith('//'):
                 continue
-            yield a_tag['href']
+            if a_tag['href'].startswith('/'):
+                yield base_url + a_tag['href']
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     
     base_soup = bs4.BeautifulSoup(get_page(prog_lang_url, args.c), 'html.parser')
 
-    for link in interesting_links(base_soup):
+    for link in interesting_links(base_soup, wiki_netloc):
         output_dict[link] = {}
 
     with output_index.open('w') as f_hndl:
