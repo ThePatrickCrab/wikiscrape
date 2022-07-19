@@ -56,13 +56,22 @@ def get_name(article: bs4.element.Tag) -> Optional[str]:
     return tag.content
 
 def get_paradigm(infobox: bs4.element.Tag) -> Optional[str]:
-    return None
+    try:
+        return infobox.find('th', text='Paradigm').next_sibling.text
+    except:
+        return None
 
 def get_first_appeared(infobox: bs4.element.Tag) -> Optional[str]:
-    return None
+    try:
+        return infobox.find('th', text='First appeared').next_sibling.text
+    except:
+        return None
 
 def get_file_extensions(infobox: bs4.element.Tag) -> Optional[str]:
-    return None
+    try:
+        return infobox.find('th', text='Filename extensions').next_sibling.text
+    except:
+        return None
 
 def count_headers(article: bs4.element.Tag) -> int:
     return len(article.find_all('h2'))
@@ -83,11 +92,11 @@ def get_language_data(page_url: str, use_cache: bool = True) -> Optional[dict]:
         name = page_url.split('/')[-1]
 
     return {
-        'name': page_url.split('/')[-1],
+        'name': name,
         'url': page_url,
-        'paradigm': None,
-        'first_appeared': None,
-        'file_extensions': None,
+        'paradigm': get_paradigm(infobox),
+        'first_appeared': get_first_appeared(infobox),
+        'file_extensions': get_file_extensions(infobox),
         'header_sections': count_headers(article),
         'internal_links': count_internal_links(article)
     }
