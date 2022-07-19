@@ -11,6 +11,9 @@ from typing import Iterator, Optional
 from urllib.parse import urlparse
 
 def get_page(page_url: str, use_cache: bool = True) -> Optional[bytes]:
+    '''Get desired page via HTTP GET request, or from a cached file if
+    requested. Caches any pages retrieved via HTTP GET.
+    '''
     try:
         url_parse_result = urlparse(page_url)
     except ValueError:
@@ -39,7 +42,7 @@ def get_page(page_url: str, use_cache: bool = True) -> Optional[bytes]:
     return page.content
 
 def interesting_links(soup: bs4.BeautifulSoup, base_url: str) -> Iterator[str]:
-    '''Get the set of internal links which reside within <li> tags
+    '''Get the set of internal links which reside within <li> tags.
     '''
     links = []
     for li_tags in soup.find_all('li'):
@@ -63,13 +66,13 @@ def get_paradigm(infobox: bs4.element.Tag) -> Optional[str]:
 
 def get_first_appeared(infobox: bs4.element.Tag) -> Optional[str]:
     try:
-        return infobox.find('th', text='First appeared').next_sibling.text
+        return infobox.find('th', text=re.compile(r'First\sappeared')).next_sibling.text
     except:
         return None
 
 def get_file_extensions(infobox: bs4.element.Tag) -> Optional[str]:
     try:
-        return infobox.find('th', text='Filename extensions').next_sibling.text
+        return infobox.find('th', text=re.compile(r'Filename\sextensions')).next_sibling.text
     except:
         return None
 
@@ -80,18 +83,22 @@ def count_internal_links(article: bs4.element.Tag) -> int:
     return len(article.find_all('a', href=re.compile(r'^/wiki/')))
 
 def get_language_data(page_url: str, use_cache: bool = True) -> Optional[dict]:
+    '''Return a data dictionary if the page has Paradigm, First
+    Appeared, and File Extensions in its infobox.
+    '''
     lang_soup = bs4.BeautifulSoup(get_page(page_url, use_cache), 'html.parser')
 
     infobox = lang_soup.find('table', class_='infobox')
     article = lang_soup.find('div', id='bodyContent')
     if infobox is None or article is None:
+        print(f'[INFO] Infobox or article not found for: {page_url}')
         return None
 
     name = get_name(article)
     if name is None:
         name = page_url.split('/')[-1]
 
-    return {
+    data = {
         'name': name,
         'url': page_url,
         'paradigm': get_paradigm(infobox),
@@ -100,6 +107,12 @@ def get_language_data(page_url: str, use_cache: bool = True) -> Optional[dict]:
         'header_sections': count_headers(article),
         'internal_links': count_internal_links(article)
     }
+    
+    if data['paradigm'] is None or data['first_appeared'] is None or data['file_extensions'] is None:
+        print(f'[INFO] Not enough info for: {name}')
+        return None
+    print(f'[INFO] Appending info for: {name}')
+    return data
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
