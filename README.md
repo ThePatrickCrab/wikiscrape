@@ -1,0 +1,11 @@
+# Wikipedia Scraping Demo
+
+This Wikipedia URL lists most if not all of the mainstream programming languages: https://en.wikipedia.org/wiki/List_of_programming_languages. Scrape this page and extract all the links to individual programming languages from it, storing the HTML of each page in a manner where they can be easily accessed again, including being able to determine which URL the HTML came from. After you have scraped every programming language page, parse each page of HTML looking for the following values from the infobox (box on the top right side of some articles): paradigm, first appeared, and file extensions. These values will not appear on every page. If a page has all three values present (ex. infobox here https://en.wikipedia.org/wiki/Python_(programming_language)), add it to a structured output file (JSON, CSV).
+
+A record in the output file should contain:
+* the name of the language (from the URL is fine)
+* the three values from the infobox
+* the number of header sections in the HTML (sections of the article with an underline separator)
+* the number of urls/links to other wikipedia articles present in the article itself (not the whole page)
+
+The final output file should only contain records/rows for pages that have all specified infobox values present.
