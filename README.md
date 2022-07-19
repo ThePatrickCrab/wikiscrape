@@ -9,3 +9,31 @@ A record in the output file should contain:
 * the number of urls/links to other wikipedia articles present in the article itself (not the whole page)
 
 The final output file should only contain records/rows for pages that have all specified infobox values present.
+
+## To Run
+
+Setup Environment
+----
+
+Create and enter a python virtual environment.
+Install necessary dependencies for the script.
+
+```bash
+python3 -m venv virtualenv
+source virtualenv/bin/activate
+pip install -r requirements.txt
+```
+
+Run
+----
+
+Create and enter a directory to contain output files.
+Run the script, capturing stdout in a log file.
+
+```bash
+mkdir output
+cd output
+python ../wikiscrape.py -c > stdout.log
+```
+
+Running the script will produce a file `index.json` containing a JSON blob of all languages captured, and a directory containing the webpages that the script visited.
