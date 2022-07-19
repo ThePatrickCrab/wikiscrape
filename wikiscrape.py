@@ -1,6 +1,7 @@
 import argparse
 import bs4
 import json
+import re
 import requests
 import sys
 import traceback
@@ -38,15 +39,58 @@ def get_page(page_url: str, use_cache: bool = True) -> Optional[bytes]:
     return page.content
 
 def interesting_links(soup: bs4.BeautifulSoup, base_url: str) -> Iterator[str]:
-    '''Generator which yields internal links that reside within <li> tags
+    '''Get the set of internal links which reside within <li> tags
     '''
+    links = []
     for li_tags in soup.find_all('li'):
         a_tags = li_tags.find_all('a', href=True)
         for a_tag in a_tags:
-            if a_tag['href'].startswith('//'):
-                continue
-            if a_tag['href'].startswith('/'):
-                yield base_url + a_tag['href']
+            if a_tag['href'].startswith('/wiki'):
+                links.append(base_url + a_tag['href'])
+    return set(links)
+
+def get_name(article: bs4.element.Tag) -> Optional[str]:
+    tag = article.find('h1')
+    if tag is None:
+        return None
+    return tag.content
+
+def get_paradigm(infobox: bs4.element.Tag) -> Optional[str]:
+    return None
+
+def get_first_appeared(infobox: bs4.element.Tag) -> Optional[str]:
+    return None
+
+def get_file_extensions(infobox: bs4.element.Tag) -> Optional[str]:
+    return None
+
+def count_headers(article: bs4.element.Tag) -> int:
+    return len(article.find_all('h2'))
+
+def count_internal_links(article: bs4.element.Tag) -> int:
+    return len(article.find_all('a', href=re.compile(r'^/wiki/')))
+
+def get_language_data(page_url: str, use_cache: bool = True) -> Optional[dict]:
+    lang_soup = bs4.BeautifulSoup(get_page(page_url, use_cache), 'html.parser')
+
+    infobox = lang_soup.find('table', class_='infobox')
+    article = lang_soup.find('div', id='bodyContent')
+    if infobox is None or article is None:
+        return None
+
+    name = get_name(article)
+    if name is None:
+        name = page_url.split('/')[-1]
+
+    return {
+        'name': page_url.split('/')[-1],
+        'url': page_url,
+        'paradigm': None,
+        'first_appeared': None,
+        'file_extensions': None,
+        'header_sections': count_headers(article),
+        'internal_links': count_internal_links(article)
+    }
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -57,13 +101,16 @@ if __name__ == '__main__':
     output_dict = {}
     output_index = Path('index.json')
 
-    prog_lang_url = 'https://en.wikipedia.org/wiki/List_of_programming_languages'
-    wiki_netloc = urlparse(prog_lang_url).netloc
+    lang_url = 'https://en.wikipedia.org/wiki/List_of_programming_languages'
+    lang_urlparse = urlparse(lang_url)
+    wiki_base_url = lang_urlparse.scheme + '://' + lang_urlparse.netloc
     
-    base_soup = bs4.BeautifulSoup(get_page(prog_lang_url, args.c), 'html.parser')
+    base_soup = bs4.BeautifulSoup(get_page(lang_url, args.c), 'html.parser')
 
-    for link in interesting_links(base_soup, wiki_netloc):
-        output_dict[link] = {}
+    for link in interesting_links(base_soup, wiki_base_url):
+        data = get_language_data(link, args.c)
+        if data is not None:
+            output_dict[link] = data
 
     with output_index.open('w') as f_hndl:
         json.dump(output_dict, f_hndl, indent=4)
